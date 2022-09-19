@@ -2,7 +2,6 @@ package com.edu.ulab.app.facade;
 
 import com.edu.ulab.app.dto.BookDto;
 import com.edu.ulab.app.dto.UserDto;
-import com.edu.ulab.app.exception.NotFoundException;
 import com.edu.ulab.app.mapper.BookMapper;
 import com.edu.ulab.app.mapper.UserMapper;
 import com.edu.ulab.app.service.BookService;
@@ -14,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -41,16 +41,8 @@ public class UserDataFacade {
         UserDto createdUser = userService.createUser(userDto);
         log.info("Created user: {}", createdUser);
 
-        List<Long> bookIdList = userBookRequest.getBookRequests()
-                .stream()
-                .filter(Objects::nonNull)
-                .map(bookMapper::bookRequestToBookDto)
-                .peek(bookDto -> bookDto.setUserId(createdUser.getId()))
-                .peek(mappedBookDto -> log.info("mapped book: {}", mappedBookDto))
-                .map(bookService::createBook)
-                .peek(createdBook -> log.info("Created book: {}", createdBook))
-                .map(BookDto::getId)
-                .toList();
+        List<Long> bookIdList = createBooksAndReturnIds(userBookRequest, createdUser.getId());
+
         log.info("Collected book ids: {}", bookIdList);
 
         return UserBookResponse.builder()
@@ -59,14 +51,82 @@ public class UserDataFacade {
                 .build();
     }
 
-    public UserBookResponse updateUserWithBooks(UserBookRequest userBookRequest) {
-        return null;
+    private List<Long> createBooksAndReturnIds(UserBookRequest userBookRequest, Long userId) {
+        return  userBookRequest.getBookRequests()
+                .stream()
+                .filter(Objects::nonNull)
+                .map(bookMapper::bookRequestToBookDto)
+                .peek(bookDto -> bookDto.setUserId(userId))
+                .peek(mappedBookDto -> log.info("mapped book: {}", mappedBookDto))
+                .map(bookService::createBook)
+                .peek(createdBook -> log.info("Created book: {}", createdBook))
+                .map(BookDto::getId)
+                .toList();
+    }
+
+    private void deleteAllBooksByUserId(Long userId) {
+        List<Long> bookIdListFromStorage = bookService.getListBookIdsByUserId(userId);
+        bookIdListFromStorage.stream()
+                .peek(bookId -> log.info("delete book with id: {}", bookId))
+                .forEach(bookService::deleteBookById);
+    }
+
+    public UserBookResponse updateUserWithBooks(UserBookRequest userBookRequest, Long userId) {
+
+        // Будем считать, что необходимо полностью обновить список книг для юзера (т. к. id книг не паредаются)
+
+        log.info("Update user book create request: {}", userBookRequest);
+        UserDto userDto = userMapper.userRequestToUserDto(userBookRequest.getUserRequest());
+        log.info("Mapped user request: {}", userDto);
+        UserDto userDtoAfterUpdate = userService.updateUser(userDto, userId);
+
+        deleteAllBooksByUserId(userId);
+        log.info("Deleted old books");
+
+        List<Long> bookIdList = createBooksAndReturnIds(userBookRequest, userId);
+        log.info("Collected new book ids: {}", bookIdList);
+
+        return UserBookResponse.builder()
+                .userId(userDtoAfterUpdate.getId())
+                .booksIdList(bookIdList)
+                .build();
     }
 
     public UserBookResponse getUserWithBooks(Long userId) {
-        return null;
+
+        log.info("Search user with idUser: {}", userId);
+        UserDto userDto = userService.getUserById(userId);
+        log.info("Found user with idUser: {}  {}", userId, userDto);
+        List<Long> bookIdList = bookService.getListBookIdsByUserId(userId);
+        bookIdList.forEach(book ->log.info("Found books for user with idUser: {}  {}", userId, book));
+
+        if (userDto == null) {
+            return null;
+        }
+
+        return UserBookResponse.builder()
+                .userId(userDto.getId())
+                .booksIdList(bookIdList)
+                .build();
     }
 
     public void deleteUserWithBooks(Long userId) {
+
+        deleteAllBooksByUserId(userId);
+        userService.deleteUserById(userId);
+        log.info("delete user with idUser: {}", userId);
+    }
+
+    public List<UserBookResponse> getAllUserWithBooks() {
+
+        log.info("Search all user with");
+        return userService.getAllUsers().stream()
+                .filter(Objects::nonNull)
+                .map(user -> UserBookResponse.builder()
+                                   .userId(user.getId())
+                                   .booksIdList(bookService.getListBookIdsByUserId(user.getId()))
+                                   .build())
+                .collect(Collectors.toList());
+
     }
 }
