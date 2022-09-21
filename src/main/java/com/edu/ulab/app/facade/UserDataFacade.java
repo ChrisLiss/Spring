@@ -7,6 +7,7 @@ import com.edu.ulab.app.mapper.UserMapper;
 import com.edu.ulab.app.service.BookService;
 import com.edu.ulab.app.service.UserService;
 import com.edu.ulab.app.web.request.UserBookRequest;
+import com.edu.ulab.app.web.response.ListUserBookResponses;
 import com.edu.ulab.app.web.response.UserBookResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -52,6 +53,7 @@ public class UserDataFacade {
     }
 
     private List<Long> createBooksAndReturnIds(UserBookRequest userBookRequest, Long userId) {
+        log.info("create books for userId: {}", userId);
         return  userBookRequest.getBookRequests()
                 .stream()
                 .filter(Objects::nonNull)
@@ -66,6 +68,7 @@ public class UserDataFacade {
 
     private void deleteAllBooksByUserId(Long userId) {
         List<Long> bookIdListFromStorage = bookService.getListBookIdsByUserId(userId);
+        log.info("delete all books for userId: {}", userId);
         bookIdListFromStorage.stream()
                 .peek(bookId -> log.info("delete book with id: {}", bookId))
                 .forEach(bookService::deleteBookById);
@@ -77,12 +80,10 @@ public class UserDataFacade {
 
         log.info("Update user book create request: {}", userBookRequest);
         UserDto userDto = userMapper.userRequestToUserDto(userBookRequest.getUserRequest());
+        userDto.setId(userId);
         log.info("Mapped user request: {}", userDto);
         UserDto userDtoAfterUpdate = userService.updateUser(userDto, userId);
-
         deleteAllBooksByUserId(userId);
-        log.info("Deleted old books");
-
         List<Long> bookIdList = createBooksAndReturnIds(userBookRequest, userId);
         log.info("Collected new book ids: {}", bookIdList);
 
@@ -101,6 +102,7 @@ public class UserDataFacade {
         bookIdList.forEach(book ->log.info("Found books for user with idUser: {}  {}", userId, book));
 
         if (userDto == null) {
+            log.info("user with idUser: {} не найден", userId);
             return null;
         }
 
@@ -113,14 +115,14 @@ public class UserDataFacade {
     public void deleteUserWithBooks(Long userId) {
 
         deleteAllBooksByUserId(userId);
-        userService.deleteUserById(userId);
         log.info("delete user with idUser: {}", userId);
+        userService.deleteUserById(userId);
     }
 
-    public List<UserBookResponse> getAllUserWithBooks() {
+    public ListUserBookResponses getAllUserWithBooks() {
 
-        log.info("Search all user with");
-        return userService.getAllUsers().stream()
+        log.info("Search all user with books");
+        List<UserBookResponse> allUsersWithBooks =  userService.getAllUsers().stream()
                 .filter(Objects::nonNull)
                 .map(user -> UserBookResponse.builder()
                                    .userId(user.getId())
@@ -128,5 +130,7 @@ public class UserDataFacade {
                                    .build())
                 .collect(Collectors.toList());
 
+        log.info("All users with book: {}", allUsersWithBooks);
+        return new ListUserBookResponses(allUsersWithBooks);
     }
 }

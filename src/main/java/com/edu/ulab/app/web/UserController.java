@@ -3,8 +3,10 @@ package com.edu.ulab.app.web;
 import com.edu.ulab.app.facade.UserDataFacade;
 import com.edu.ulab.app.web.constant.WebConstant;
 import com.edu.ulab.app.web.request.UserBookRequest;
+import com.edu.ulab.app.web.response.ListUserBookResponses;
 import com.edu.ulab.app.web.response.UserBookResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.constraints.Pattern;
 
-import java.util.List;
 
 import static com.edu.ulab.app.web.constant.WebConstant.REQUEST_ID_PATTERN;
 import static com.edu.ulab.app.web.constant.WebConstant.RQID;
@@ -31,7 +32,7 @@ public class UserController {
     }
 
     @PostMapping(value = "/create")
-    @Operation(summary = "Create user book row.",
+    @Operation(summary = "Create user with books",
             responses = {
                     @ApiResponse(description = "User book",
                             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -44,33 +45,45 @@ public class UserController {
     }
 
     @PutMapping(value = "/update/{userId}")
-    @Operation(summary = "Update user with books row.",
+    @Operation(summary = "Update user with books",
             responses = {
                     @ApiResponse(description = "User book",
                             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                                     schema = @Schema(implementation = UserBookResponse.class)))})
-    public UserBookResponse updateUserWithBooks(@RequestBody UserBookRequest request, @PathVariable Long userId) {
+    public UserBookResponse updateUserWithBooks(@RequestBody UserBookRequest request,
+                                                @PathVariable @Parameter(description = "Id user") Long userId) {
         UserBookResponse response = userDataFacade.updateUserWithBooks(request, userId);
         log.info("Response with updated user and his books: {}", response);
         return response;
     }
 
     @GetMapping(value = "/get/{userId}")
-    public UserBookResponse getUserWithBooks(@PathVariable Long userId) {
+    @Operation(summary = "Get user with books by user Id",
+            responses = {
+                    @ApiResponse(description = "User book",
+                            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = UserBookResponse.class)))})
+    public UserBookResponse getUserWithBooks(@PathVariable @Parameter(description = "Id user") Long userId) {
         UserBookResponse response = userDataFacade.getUserWithBooks(userId);
         log.info("Response with user and his books: {}", response);
         return response;
     }
 
     @DeleteMapping(value = "/delete/{userId}")
-    public void deleteUserWithBooks(@PathVariable Long userId) {
+    @Operation(summary = "Delete user with books by user Id")
+    public void deleteUserWithBooks(@PathVariable @Parameter(description = "Id user") Long userId) {
         log.info("Delete user and his books:  userId {}", userId);
         userDataFacade.deleteUserWithBooks(userId);
     }
 
     @GetMapping(value = "/get")
-    public List<UserBookResponse> getAllUserWithBooks() {
-        List<UserBookResponse> response = userDataFacade.getAllUserWithBooks();
+    @Operation(summary = "Get all users with books",
+            responses = {
+                    @ApiResponse(description = "User book",
+                            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                    schema = @Schema(implementation = ListUserBookResponses.class)))})
+    public ListUserBookResponses getAllUserWithBooks() {
+        ListUserBookResponses response = userDataFacade.getAllUserWithBooks();
         log.info("Response with all user and his books: {}", response);
         return response;
     }

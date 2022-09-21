@@ -1,44 +1,19 @@
 package com.edu.ulab.app.dao;
 
-import com.edu.ulab.app.dto.UserDto;
 import com.edu.ulab.app.entity.UserEntity;
-import com.edu.ulab.app.storage.UserStorage;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-@RequiredArgsConstructor
-@Repository
-public class UserDao {
+public interface UserDao {
 
-    private final UserStorage userStorage;
+    Optional<UserEntity> getUserById(Long userId);
 
-    public Optional<UserEntity> getUserById(Long userId) {
-        return userStorage.getById(userId);
-    }
+    Optional<UserEntity> saveAndReturn(UserEntity user);
 
-    public Optional<UserEntity> saveAndReturn(UserEntity user) {
-        user.setId(userStorage.getNewId());
-        userStorage.save(user);
-        return userStorage.getById(user.getId());
-    }
+    void delete(Long userId);
 
-    public void delete(Long userId) {
-        userStorage.delete(userId);
-    }
+    List<UserEntity> getAll();
 
-    public List<UserEntity> getAll() {
-        return userStorage.getAll();
-    }
-
-    public void update(UserEntity userEntity, UserDto userDto) {
-       userEntity.setFullName(userDto.getFullName());
-       userEntity.setTitle(userDto.getTitle());
-       userEntity.setAge(userDto.getAge());
-
-       userStorage.save(userEntity);
-    }
-
+    void update(UserEntity userEntity);
 }
